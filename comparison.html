@@ -1,0 +1,115 @@
+<!doctype html>
+<html lang="en">
+<head>
+<meta charset="utf-8" />
+<title>Aurora — Four-Way Local AI Comparison</title>
+<style>
+* { box-sizing: border-box; margin: 0; padding: 0; }
+html, body { height: 100%; background: #0a0a14; color: #f0f0f0; font-family: -apple-system, "Helvetica Neue", Helvetica, Arial, sans-serif; overflow: hidden; }
+.frame {
+  display: grid;
+  grid-template-columns: repeat(4, 1fr);
+  grid-template-rows: 60px 1fr 80px;
+  height: 100vh;
+  width: 100vw;
+  gap: 0;
+}
+.title {
+  grid-column: 1 / 5;
+  display: flex; align-items: center; justify-content: center;
+  font-size: 22px; font-weight: 600; letter-spacing: 0.3px;
+  background: linear-gradient(180deg, #11122a 0%, #0a0a14 100%);
+  border-bottom: 1px solid #1f2040;
+}
+.title .accent { color: #6cf; margin-right: 10px; }
+.title small { color: #999; margin-left: 16px; font-weight: 400; }
+.col { display: flex; flex-direction: column; min-width: 0; border-left: 1px solid #1f2040; }
+.col:first-child { border-left: none; }
+.col h2 {
+  text-align: center; padding: 12px 6px; font-size: 14px;
+  background: #161730; color: #fff; font-weight: 600; letter-spacing: 0.3px;
+  border-bottom: 1px solid #2a2c55;
+  white-space: nowrap;
+  overflow: hidden;
+  text-overflow: ellipsis;
+}
+.col .badge {
+  display: inline-block;
+  margin-left: 6px; padding: 2px 8px; border-radius: 999px;
+  font-size: 10px; font-weight: 500;
+}
+.badge-ds4 { background: #2a4f2a; color: #b6f5b6; }
+.badge-cloud { background: #4f2a4f; color: #f5b6f5; }
+.badge-gemma { background: #2a3a5f; color: #b6c8f5; }
+.badge-qwen { background: #4f3a1a; color: #fbd084; }
+.col iframe {
+  flex: 1;
+  width: 100%;
+  border: none;
+  background: #000;
+  display: block;
+}
+.stats {
+  grid-column: 1 / 5;
+  display: grid; grid-template-columns: repeat(4, 1fr);
+  background: #11122a; border-top: 1px solid #1f2040;
+  font-size: 13px;
+}
+.stat { padding: 12px 14px; border-left: 1px solid #1f2040; display: flex; flex-direction: column; gap: 4px; }
+.stat:first-child { border-left: none; }
+.stat .label { color: #888; font-size: 10px; text-transform: uppercase; letter-spacing: 0.5px; }
+.stat .val { color: #fff; font-size: 14px; font-weight: 500; }
+.stat .val.green { color: #6f6; }
+.stat .val.purple { color: #d6f; }
+.stat .val.blue { color: #6bf; }
+.stat .val.gold { color: #fb6; }
+</style>
+</head>
+<body>
+<div class="frame">
+  <div class="title">
+    <span class="accent">▶</span> Four-way Aurora — same prompt, four engines
+    <small>Apple Silicon · Local + Cloud · Identical task</small>
+  </div>
+
+  <div class="col">
+    <h2>DeepSeek V4 Flash<span class="badge badge-ds4">ds4</span></h2>
+    <iframe src="outputs/ds4.html" title="DeepSeek V4 Flash"></iframe>
+  </div>
+
+  <div class="col">
+    <h2>Cloud Claude<span class="badge badge-cloud">cloud</span></h2>
+    <iframe src="outputs/cloud-claude.html" title="Cloud Claude"></iframe>
+  </div>
+
+  <div class="col">
+    <h2>Gemma 4 31B<span class="badge badge-gemma">MLX</span></h2>
+    <iframe src="outputs/gemma.html" title="Gemma 4 31B"></iframe>
+  </div>
+
+  <div class="col">
+    <h2>Qwen 3 Agent<span class="badge badge-qwen">MLX</span></h2>
+    <iframe src="outputs/qwen.html" title="Qwen 3 Agent"></iframe>
+  </div>
+
+  <div class="stats">
+    <div class="stat">
+      <div class="label">DeepSeek V4 Flash · ds4 local</div>
+      <div class="val green">103 s · 3,259 t · ~32 t/s</div>
+    </div>
+    <div class="stat">
+      <div class="label">Cloud Claude · Max plan</div>
+      <div class="val purple">192 s · ~3,500 t (cloud)</div>
+    </div>
+    <div class="stat">
+      <div class="label">Gemma 4 31B · MLX local</div>
+      <div class="val blue">131 s · 1,992 t · ~15 t/s</div>
+    </div>
+    <div class="stat">
+      <div class="label">Qwen 3 Agent · MLX local</div>
+      <div class="val gold">28 s · 301 lines · ~70 t/s</div>
+    </div>
+  </div>
+</div>
+</body>
+</html>

@@ -1,0 +1,6 @@
+elapsed_seconds=131
+model=Gemma 4 31B (MLX local)
+{
+  "input_tokens": 139,
+  "output_tokens": 1992
+}

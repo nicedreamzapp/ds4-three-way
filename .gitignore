@@ -1,0 +1,5 @@
+recordings/*.mp4
+recordings/*.png
+ds4-comparison-final.mp4
+*.raw.json
+.DS_Store

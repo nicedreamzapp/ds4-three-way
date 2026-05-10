@@ -1,0 +1,396 @@
+<!doctype html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width,initial-scale=1">
+<title>Northern Lights</title>
+<style>
+  html, body {
+    margin: 0;
+    padding: 0;
+    height: 100%;
+    overflow: hidden;
+    background: #02030a;
+  }
+  canvas {
+    display: block;
+    width: 100vw;
+    height: 100vh;
+  }
+</style>
+</head>
+<body>
+<canvas id="sky"></canvas>
+<script>
+(function () {
+  const canvas = document.getElementById('sky');
+  const ctx = canvas.getContext('2d');
+  let W = 0, H = 0, DPR = 1;
+
+  let stars = [];
+  let ridges = [];
+  let trees = [];
+
+  function rand() { return Math.random(); }
+
+  function hslToRgb(h, s, l) {
+    let r, g, b;
+    if (s === 0) { r = g = b = l; }
+    else {
+      const hue2rgb = (p, q, t) => {
+        if (t < 0) t += 1;
+        if (t > 1) t -= 1;
+        if (t < 1 / 6) return p + (q - p) * 6 * t;
+        if (t < 1 / 2) return q;
+        if (t < 2 / 3) return p + (q - p) * (2 / 3 - t) * 6;
+        return p;
+      };
+      const q = l < 0.5 ? l * (1 + s) : l + s - l * s;
+      const p = 2 * l - q;
+      r = hue2rgb(p, q, h + 1 / 3);
+      g = hue2rgb(p, q, h);
+      b = hue2rgb(p, q, h - 1 / 3);
+    }
+    return [r * 255, g * 255, b * 255];
+  }
+
+  function makeRidge(baseY, peakHeight, peakCount, jaggedness) {
+    const anchors = [{ x: 0, y: baseY * H }];
+    const pad = 0.04;
+    for (let i = 0; i < peakCount; i++) {
+      const t = pad + (i + 0.5) / peakCount * (1 - pad * 2);
+      const px = t * W + (rand() - 0.5) * (W / peakCount) * 0.4;
+      const py = (baseY - peakHeight * (0.55 + rand() * 0.45)) * H;
+      anchors.push({ x: px, y: py });
+      const valleyT = t + 0.5 / peakCount;
+      if (valleyT < 1 - pad) {
+        anchors.push({
+          x: valleyT * W + (rand() - 0.5) * (W / peakCount) * 0.3,
+          y: (baseY - peakHeight * 0.15 * rand()) * H
+        });
+      }
+    }
+    anchors.push({ x: W, y: baseY * H });
+
+    const out = [anchors[0]];
+    for (let i = 0; i < anchors.length - 1; i++) {
+      const a = anchors[i], b = anchors[i + 1];
+      const segs = 8;
+      for (let j = 1; j <= segs; j++) {
+        const tt = j / segs;
+        const x = a.x + (b.x - a.x) * tt;
+        let y = a.y + (b.y - a.y) * tt;
+        const bias = (rand() - 0.5) * jaggedness * H * 0.022;
+        const spike = Math.sin(tt * Math.PI) * (rand() - 0.5) * jaggedness * H * 0.02;
+        y += bias + spike;
+        out.push({ x, y });
+      }
+    }
+    return out;
+  }
+
+  function placeTrees(ridge, density, sizeScale) {
+    const out = [];
+    for (let i = 1; i < ridge.length; i++) {
+      const a = ridge[i - 1], b = ridge[i];
+      const dx = b.x - a.x;
+      const segLen = Math.hypot(dx, b.y - a.y);
+      const count = Math.max(0, Math.floor(density * segLen / (W * 0.012)));
+      for (let j = 0; j < count; j++) {
+        const t = rand();
+        const x = a.x + dx * t;
+        const y = a.y + (b.y - a.y) * t;
+        const h = sizeScale * H * (0.012 + rand() * 0.022);
+        out.push({ x, y, h });
+      }
+    }
+    return out;
+  }
+
+  function init() {
+    stars = [];
+    const starCount = Math.floor(W * H / (3200 * DPR));
+    for (let i = 0; i < starCount; i++) {
+      stars.push({
+        x: rand() * W,
+        y: rand() * H * 0.72,
+        r: (0.3 + rand() * 1.5) * DPR,
+        phase: rand() * Math.PI * 2,
+        speed: 0.3 + rand() * 1.8,
+        bright: 0.25 + rand() * 0.75
+      });
+    }
+
+    ridges = [
+      { pts: makeRidge(0.66, 0.16, 4, 0.55), color: '#0a1424', glow: 0.32 },
+      { pts: makeRidge(0.76, 0.20, 5, 0.85), color: '#050b18', glow: 0.46 },
+      { pts: makeRidge(0.86, 0.13, 6, 1.10), color: '#01040c', glow: 0.62 }
+    ];
+
+    trees = [
+      placeTrees(ridges[0].pts, 0.55, 0.7),
+      placeTrees(ridges[1].pts, 0.75, 0.85),
+      placeTrees(ridges[2].pts, 1.00, 1.0)
+    ];
+  }
+
+  function resize() {
+    DPR = Math.min(window.devicePixelRatio || 1, 2);
+    W = canvas.width = Math.floor(window.innerWidth * DPR);
+    H = canvas.height = Math.floor(window.innerHeight * DPR);
+    canvas.style.width = window.innerWidth + 'px';
+    canvas.style.height = window.innerHeight + 'px';
+    init();
+  }
+
+  const auroraBands = [
+    { yBase: 0.20, amp: 0.060, f1: 0.7, f2: 1.6, f3: 2.9, speed: 0.05, hueOffset: 0,   height: 0.18 },
+    { yBase: 0.27, amp: 0.045, f1: 0.9, f2: 2.1, f3: 3.4, speed: 0.07, hueOffset: 90,  height: 0.14 },
+    { yBase: 0.34, amp: 0.055, f1: 0.5, f2: 1.3, f3: 2.5, speed: 0.04, hueOffset: 180, height: 0.20 },
+    { yBase: 0.30, amp: 0.038, f1: 1.2, f2: 2.4, f3: 4.1, speed: 0.10, hueOffset: 270, height: 0.11 }
+  ];
+
+  function auroraHue(t, hueOffset) {
+    const stops = [135, 175, 295, 270];
+    const cycle = ((t * 0.055 + hueOffset / 360) % 1 + 1) % 1;
+    const idx = cycle * stops.length;
+    const i0 = Math.floor(idx) % stops.length;
+    const i1 = (i0 + 1) % stops.length;
+    const f = idx - Math.floor(idx);
+    let h0 = stops[i0], h1 = stops[i1];
+    let dh = h1 - h0;
+    if (dh > 180) dh -= 360;
+    if (dh < -180) dh += 360;
+    return ((h0 + dh * f) + 360) % 360;
+  }
+
+  function auroraOffset(band, x, t) {
+    const tx = x / W;
+    const a1 = Math.sin(tx * band.f1 * Math.PI * 2 + t * band.speed * 4.0);
+    const a2 = Math.sin(tx * band.f2 * Math.PI * 2 + t * band.speed * 7.0 + 1.3);
+    const a3 = Math.sin(tx * band.f3 * Math.PI * 2 + t * band.speed * 11.0 + 2.7);
+    return (a1 * 0.6 + a2 * 0.3 + a3 * 0.15) * band.amp * H;
+  }
+
+  function sampleAuroraColor(x, t) {
+    let r = 0, g = 0, b = 0, w = 0;
+    for (const band of auroraBands) {
+      const hue = auroraHue(t, band.hueOffset);
+      const wt = 1.0;
+      const c = hslToRgb(hue / 360, 0.85, 0.55);
+      r += c[0] * wt;
+      g += c[1] * wt;
+      b += c[2] * wt;
+      w += wt;
+    }
+    return [r / w, g / w, b / w];
+  }
+
+  function drawSky() {
+    const g = ctx.createLinearGradient(0, 0, 0, H);
+    g.addColorStop(0.00, '#02030a');
+    g.addColorStop(0.45, '#040820');
+    g.addColorStop(0.85, '#080d22');
+    g.addColorStop(1.00, '#0c1230');
+    ctx.fillStyle = g;
+    ctx.fillRect(0, 0, W, H);
+  }
+
+  function drawStars(t) {
+    ctx.save();
+    for (const s of stars) {
+      const tw = 0.5 + 0.5 * Math.sin(t * s.speed + s.phase);
+      const a = s.bright * (0.45 + 0.55 * tw);
+      ctx.globalAlpha = a;
+      ctx.fillStyle = '#ffffff';
+      ctx.beginPath();
+      ctx.arc(s.x, s.y, s.r, 0, Math.PI * 2);
+      ctx.fill();
+      if (s.r > 1.4 * DPR) {
+        const grad = ctx.createRadialGradient(s.x, s.y, 0, s.x, s.y, s.r * 4);
+        grad.addColorStop(0, 'rgba(255,255,255,' + (a * 0.55) + ')');
+        grad.addColorStop(1, 'rgba(255,255,255,0)');
+        ctx.globalAlpha = 1;
+        ctx.fillStyle = grad;
+        ctx.beginPath();
+        ctx.arc(s.x, s.y, s.r * 4, 0, Math.PI * 2);
+        ctx.fill();
+      }
+    }
+    ctx.restore();
+  }
+
+  function drawAurora(t) {
+    ctx.save();
+    ctx.globalCompositeOperation = 'screen';
+
+    for (const band of auroraBands) {
+      const baseY = band.yBase * H;
+      const heightPx = band.height * H;
+      const hue = auroraHue(t, band.hueOffset);
+
+      const samples = 90;
+      const top = new Array(samples + 1);
+      for (let i = 0; i <= samples; i++) {
+        const x = (i / samples) * W;
+        const y = baseY + auroraOffset(band, x, t);
+        top[i] = { x, y };
+      }
+
+      const layers = 6;
+      for (let l = layers - 1; l >= 0; l--) {
+        const lf = l / (layers - 1);
+        const stretchUp = (heightPx * 0.10) + lf * heightPx * 0.65;
+        const stretchDown = (heightPx * 0.45) + lf * heightPx * 0.85;
+        const opacity = (1 - lf) * 0.30 + 0.05;
+        const lightness = 60 - lf * 14;
+        const sat = 92 - lf * 8;
+
+        ctx.beginPath();
+        ctx.moveTo(top[0].x, top[0].y - stretchUp);
+        for (let i = 1; i < top.length; i++) {
+          ctx.lineTo(top[i].x, top[i].y - stretchUp);
+        }
+        for (let i = top.length - 1; i >= 0; i--) {
+          ctx.lineTo(top[i].x, top[i].y + stretchDown);
+        }
+        ctx.closePath();
+
+        const grad = ctx.createLinearGradient(0, baseY - stretchUp, 0, baseY + stretchDown);
+        grad.addColorStop(0.00, 'hsla(' + hue + ',' + sat + '%,' + lightness + '%,0)');
+        grad.addColorStop(0.30, 'hsla(' + hue + ',' + sat + '%,' + lightness + '%,' + opacity + ')');
+        grad.addColorStop(0.55, 'hsla(' + ((hue + 25) % 360) + ',' + sat + '%,' + (lightness - 8) + '%,' + (opacity * 0.7) + ')');
+        grad.addColorStop(0.80, 'hsla(' + ((hue + 55) % 360) + ',' + sat + '%,' + (lightness - 18) + '%,' + (opacity * 0.35) + ')');
+        grad.addColorStop(1.00, 'hsla(' + ((hue + 80) % 360) + ',' + sat + '%,' + (lightness - 28) + '%,0)');
+        ctx.fillStyle = grad;
+        ctx.fill();
+      }
+
+      ctx.beginPath();
+      ctx.moveTo(top[0].x, top[0].y);
+      for (let i = 1; i < top.length; i++) ctx.lineTo(top[i].x, top[i].y);
+      ctx.strokeStyle = 'hsla(' + hue + ',100%,82%,0.32)';
+      ctx.lineWidth = 1.5 * DPR;
+      ctx.stroke();
+    }
+
+    ctx.restore();
+  }
+
+  function drawRidge(ridge, t) {
+    const pts = ridge.pts;
+
+    ctx.fillStyle = ridge.color;
+    ctx.beginPath();
+    ctx.moveTo(0, H);
+    ctx.lineTo(pts[0].x, pts[0].y);
+    for (let i = 1; i < pts.length; i++) ctx.lineTo(pts[i].x, pts[i].y);
+    ctx.lineTo(W, H);
+    ctx.closePath();
+    ctx.fill();
+
+    ctx.save();
+    ctx.globalCompositeOperation = 'screen';
+    for (let i = 0; i < pts.length - 1; i++) {
+      const a = pts[i], b = pts[i + 1];
+      const midX = (a.x + b.x) * 0.5;
+      const c = sampleAuroraColor(midX, t);
+      const alpha = ridge.glow * 0.32;
+      ctx.strokeStyle = 'rgba(' + (c[0] | 0) + ',' + (c[1] | 0) + ',' + (c[2] | 0) + ',' + alpha + ')';
+      ctx.lineWidth = 2.4 * DPR;
+      ctx.beginPath();
+      ctx.moveTo(a.x, a.y);
+      ctx.lineTo(b.x, b.y);
+      ctx.stroke();
+    }
+    ctx.restore();
+  }
+
+  function drawTrees(treeArr, color, t, glowFactor) {
+    ctx.fillStyle = color;
+    for (const tr of treeArr) {
+      const w = tr.h * 0.42;
+      ctx.beginPath();
+      ctx.moveTo(tr.x - w, tr.y + 1);
+      ctx.lineTo(tr.x - w * 0.7, tr.y - tr.h * 0.35);
+      ctx.lineTo(tr.x - w * 0.45, tr.y - tr.h * 0.30);
+      ctx.lineTo(tr.x - w * 0.55, tr.y - tr.h * 0.60);
+      ctx.lineTo(tr.x - w * 0.30, tr.y - tr.h * 0.55);
+      ctx.lineTo(tr.x - w * 0.18, tr.y - tr.h * 0.82);
+      ctx.lineTo(tr.x, tr.y - tr.h);
+      ctx.lineTo(tr.x + w * 0.18, tr.y - tr.h * 0.82);
+      ctx.lineTo(tr.x + w * 0.30, tr.y - tr.h * 0.55);
+      ctx.lineTo(tr.x + w * 0.55, tr.y - tr.h * 0.60);
+      ctx.lineTo(tr.x + w * 0.45, tr.y - tr.h * 0.30);
+      ctx.lineTo(tr.x + w * 0.7, tr.y - tr.h * 0.35);
+      ctx.lineTo(tr.x + w, tr.y + 1);
+      ctx.closePath();
+      ctx.fill();
+    }
+
+    ctx.save();
+    ctx.globalCompositeOperation = 'screen';
+    for (const tr of treeArr) {
+      const c = sampleAuroraColor(tr.x, t);
+      const tipX = tr.x;
+      const tipY = tr.y - tr.h;
+      const radius = tr.h * 0.7;
+      const grad = ctx.createRadialGradient(tipX, tipY, 0, tipX, tipY, radius);
+      const r = c[0] | 0, g = c[1] | 0, b = c[2] | 0;
+      grad.addColorStop(0,   'rgba(' + r + ',' + g + ',' + b + ',' + (glowFactor * 0.55) + ')');
+      grad.addColorStop(0.5, 'rgba(' + r + ',' + g + ',' + b + ',' + (glowFactor * 0.18) + ')');
+      grad.addColorStop(1,   'rgba(' + r + ',' + g + ',' + b + ',0)');
+      ctx.fillStyle = grad;
+      ctx.beginPath();
+      ctx.arc(tipX, tipY, radius, 0, Math.PI * 2);
+      ctx.fill();
+    }
+    ctx.restore();
+  }
+
+  function drawMountainAuroraGlow(t) {
+    ctx.save();
+    ctx.globalCompositeOperation = 'screen';
+    const ridge = ridges[0].pts;
+    const top = ridges[0];
+    for (let i = 0; i < ridge.length - 1; i++) {
+      const a = ridge[i], b = ridge[i + 1];
+      const midX = (a.x + b.x) * 0.5;
+      const midY = Math.min(a.y, b.y);
+      const c = sampleAuroraColor(midX, t);
+      const r = c[0] | 0, g = c[1] | 0, bl = c[2] | 0;
+      const radius = H * 0.05;
+      const grad = ctx.createRadialGradient(midX, midY, 0, midX, midY, radius);
+      grad.addColorStop(0, 'rgba(' + r + ',' + g + ',' + bl + ',0.10)');
+      grad.addColorStop(1, 'rgba(' + r + ',' + g + ',' + bl + ',0)');
+      ctx.fillStyle = grad;
+      ctx.beginPath();
+      ctx.arc(midX, midY, radius, 0, Math.PI * 2);
+      ctx.fill();
+    }
+    ctx.restore();
+  }
+
+  function frame(timeMs) {
+    const t = timeMs / 1000;
+
+    drawSky();
+    drawStars(t);
+    drawAurora(t);
+    drawMountainAuroraGlow(t);
+
+    for (let i = 0; i < ridges.length; i++) {
+      drawRidge(ridges[i], t);
+      drawTrees(trees[i], ridges[i].color, t, ridges[i].glow);
+    }
+
+    requestAnimationFrame(frame);
+  }
+
+  resize();
+  window.addEventListener('resize', resize);
+  requestAnimationFrame(frame);
+})();
+</script>
+</body>
+</html>

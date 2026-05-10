@@ -1,0 +1,2 @@
+elapsed_seconds=192
+model=Cloud Claude (claude CLI, Max plan)

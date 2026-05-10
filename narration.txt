@@ -1,0 +1,9 @@
+Today I ran the same prompt through three different artificial intelligence engines, all on the same MacBook. The task: build an animated northern lights scene in a single H T M L file — mountains, pine trees, twinkling stars, and a flowing aurora.
+
+Engine one — DeepSeek version four Flash. A two hundred and eighty-four billion parameter model running entirely offline through a brand-new inference engine, written in the C language, called dee ess four. It produced three thousand two hundred and fifty-nine tokens in one hundred and three seconds.
+
+Engine two — cloud Claude on the Max plan. One hundred and ninety-two seconds, three thousand five hundred tokens, sent through Anthropic's data center.
+
+Engine three — Gemma four, thirty-one billion parameters, running locally through em ell ex. One hundred and thirty-one seconds, one thousand nine hundred and ninety-two tokens.
+
+Three engines. Same prompt. Same hardware. Three completely different auroras. One sent its work to a data center. The other two never left the laptop. That changes the math.

@@ -1,0 +1,37 @@
+<!doctype html>
+<html><head><meta charset="utf-8"><style>
+* { box-sizing: border-box; margin: 0; padding: 0; }
+html, body { height: 100%; width: 100%; background: #0a0a14; color: #f0f0f0; font-family: -apple-system, "Helvetica Neue", Helvetica, Arial, sans-serif; overflow: hidden; }
+.scene { position: relative; width: 100vw; height: 100vh; }
+.game { position: absolute; top: 50%; right: 60px; transform: translateY(-50%); width: 640px; height: 640px; border: 1px solid #2a2c55; border-radius: 16px; background: #000; }
+.label { position: absolute; top: 50%; left: 70px; transform: translateY(-50%); width: 540px; }
+.label .kicker { color: #6bf; font-size: 14px; letter-spacing: 4px; text-transform: uppercase; margin-bottom: 14px; }
+.label .badge { display: inline-block; padding: 6px 16px; background: #2a3a5f; color: #b6c8f5; border-radius: 999px; font-size: 14px; font-weight: 600; margin-bottom: 22px; }
+.label .title { font-size: 64px; font-weight: 700; letter-spacing: -1.5px; line-height: 1.05; margin-bottom: 18px; }
+.label .title .accent { color: #6bf; }
+.label .subtitle { color: #aaa; font-size: 22px; line-height: 1.4; }
+
+.stats-bar { position: absolute; bottom: 40px; left: 70px; right: 60px; display: flex; gap: 0; background: #11122a; border-radius: 14px; border: 1px solid #2a2c55; overflow: hidden; }
+.stats-bar .stat { padding: 16px 24px; border-left: 1px solid #2a2c55; flex: 1; text-align: center; }
+.stats-bar .stat:first-child { border-left: none; }
+.stats-bar .stat .label-cell { color: #888; font-size: 11px; letter-spacing: 1px; text-transform: uppercase; }
+.stats-bar .stat .val { color: #f0f0f0; font-weight: 700; font-size: 26px; margin-top: 4px; }
+.stats-bar .stat .val.blue { color: #6bf; }
+</style></head>
+<body>
+<div class="scene">
+  <iframe class="game" src="outputs/gemma.html"></iframe>
+  <div class="label">
+    <div class="kicker">Engine 3 of 3</div>
+    <span class="badge">LOCAL · MLX</span>
+    <div class="title">Gemma 4 <span class="accent">31B</span></div>
+    <div class="subtitle">Google open-weight 31B, 4-bit quantized, served through Apple MLX.</div>
+  </div>
+  <div class="stats-bar">
+    <div class="stat"><div class="label-cell">Time</div><div class="val blue">131 s</div></div>
+    <div class="stat"><div class="label-cell">Output</div><div class="val">1,992 t</div></div>
+    <div class="stat"><div class="label-cell">Speed</div><div class="val">~15 t/s</div></div>
+    <div class="stat"><div class="label-cell">Hosted on</div><div class="val">your laptop</div></div>
+  </div>
+</div>
+</body></html>

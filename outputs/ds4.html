@@ -1,0 +1,331 @@
+<!doctype html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>Northern Lights</title>
+  <style>
+    * {
+      margin: 0;
+      padding: 0;
+      box-sizing: border-box;
+    }
+    body {
+      background: #000;
+      overflow: hidden;
+      height: 100vh;
+      width: 100vw;
+    }
+    canvas {
+      display: block;
+      width: 100vw;
+      height: 100vh;
+      background: #000;
+    }
+  </style>
+</head>
+<body>
+  <canvas id="auroraCanvas"></canvas>
+  <script>
+    (function() {
+      const canvas = document.getElementById('auroraCanvas');
+      const ctx = canvas.getContext('2d');
+
+      let W, H;
+
+      function resize() {
+        W = canvas.width = window.innerWidth;
+        H = canvas.height = window.innerHeight;
+      }
+      window.addEventListener('resize', resize);
+      resize();
+
+      // ---------- STARS ----------
+      const stars = [];
+      for (let i = 0; i < 600; i++) {
+        stars.push({
+          x: Math.random() * W,
+          y: Math.random() * H * 0.75, // keep stars mostly upper sky
+          r: 0.5 + Math.random() * 1.5,
+          twinkleSpeed: 0.5 + Math.random() * 2,
+          phase: Math.random() * Math.PI * 2,
+          baseBright: 0.3 + Math.random() * 0.7
+        });
+      }
+
+      // ---------- MOUNTAIN SILHOUETTE ----------
+      // Generate jagged mountain path (peaks and valleys)
+      function generateMountainPath() {
+        const points = [];
+        const segments = 80;
+        const stepX = W / segments;
+        let x = 0;
+        // base Y at bottom
+        const baseY = H * 0.75;
+        for (let i = 0; i <= segments; i++) {
+          let y;
+          if (i === 0 || i === segments) {
+            y = H; // edges go to bottom
+          } else {
+            // jagged peaks between 0.5H and 0.75H
+            const variation = Math.sin(i * 1.5) * 0.15 * H + Math.cos(i * 0.7) * 0.1 * H;
+            y = baseY + variation;
+            // clamp
+            y = Math.min(H * 0.85, Math.max(H * 0.5, y));
+          }
+          points.push({ x, y });
+          x += stepX;
+        }
+        return points;
+      }
+
+      let mountainPoints = generateMountainPath();
+
+      // ---------- PINE TREES ----------
+      // Generate tree positions along mountain ridges (peaks)
+      function generateTrees() {
+        const trees = [];
+        const peaks = [];
+        // find local maxima (peaks) from mountain points
+        for (let i = 1; i < mountainPoints.length - 1; i++) {
+          const prev = mountainPoints[i - 1].y;
+          const curr = mountainPoints[i].y;
+          const next = mountainPoints[i + 1].y;
+          if (curr < prev && curr < next) {
+            peaks.push(mountainPoints[i]);
+          }
+        }
+        // also add some random along ridges
+        const ridgePoints = mountainPoints.filter((p, idx) => idx % 3 === 0);
+        const candidates = [...peaks, ...ridgePoints];
+        // sort by x
+        candidates.sort((a, b) => a.x - b.x);
+        // pick a subset
+        const step = Math.max(1, Math.floor(candidates.length / 25));
+        for (let i = 0; i < candidates.length; i += step) {
+          const p = candidates[i];
+          // ensure not too low
+          if (p.y < H * 0.55) continue;
+          // random size
+          const height = 20 + Math.random() * 40;
+          const width = 8 + Math.random() * 12;
+          trees.push({
+            x: p.x,
+            y: p.y,
+            height: height,
+            width: width,
+            type: Math.random() > 0.5 ? 'pointy' : 'round'
+          });
+        }
+        // add a few more scattered near peaks
+        for (let i = 0; i < 15; i++) {
+          const idx = Math.floor(Math.random() * mountainPoints.length);
+          const p = mountainPoints[idx];
+          if (p.y < H * 0.55) continue;
+          trees.push({
+            x: p.x + (Math.random() - 0.5) * 30,
+            y: p.y + Math.random() * 10,
+            height: 15 + Math.random() * 35,
+            width: 6 + Math.random() * 10,
+            type: 'pointy'
+          });
+        }
+        return trees;
+      }
+
+      let trees = generateTrees();
+
+      // ---------- AURORA BANDS ----------
+      // We'll draw multiple flowing bands with gradient colors
+      const bands = [];
+      const bandCount = 5;
+      for (let i = 0; i < bandCount; i++) {
+        bands.push({
+          offset: i * 0.4,
+          width: 60 + Math.random() * 40,
+          yBase: 0.15 + i * 0.08,
+          speed: 0.002 + Math.random() * 0.003,
+          phase: Math.random() * Math.PI * 2,
+          colorShift: Math.random() * 2
+        });
+      }
+
+      // ---------- DRAWING ----------
+      let time = 0;
+
+      function draw() {
+        time += 0.02;
+
+        // Clear
+        ctx.fillStyle = '#000510';
+        ctx.fillRect(0, 0, W, H);
+
+        // ---- STARS ----
+        for (const star of stars) {
+          const brightness = star.baseBright + 0.3 * Math.sin(time * star.twinkleSpeed + star.phase);
+          const alpha = Math.max(0.2, Math.min(1, brightness));
+          ctx.beginPath();
+          ctx.arc(star.x, star.y, star.r, 0, Math.PI * 2);
+          ctx.fillStyle = `rgba(255, 255, 255, ${alpha})`;
+          ctx.fill();
+        }
+
+        // ---- AURORA BANDS ----
+        // We'll draw bands as smooth paths with gradient
+        for (let b = 0; b < bands.length; b++) {
+          const band = bands[b];
+          const yBase = band.yBase * H;
+          const bandWidth = band.width + 20 * Math.sin(time * 0.5 + band.phase);
+          const offset = band.offset;
+
+          // Colors cycling
+          const t = time * band.speed * 20 + band.colorShift;
+          // map t to hue rotation: green(120) -> teal(180) -> magenta(300) -> violet(270) -> green
+          let hue1 = 120 + 60 * Math.sin(t * 0.7);
+          let hue2 = 180 + 80 * Math.sin(t * 0.5 + 1.2);
+          let hue3 = 300 + 40 * Math.sin(t * 0.6 + 2.5);
+          // blend hues
+          const hue = (hue1 * 0.5 + hue2 * 0.3 + hue3 * 0.2);
+          const hueShift = hue + 20 * Math.sin(t * 0.3);
+
+          // Create gradient across band width
+          const grad = ctx.createLinearGradient(0, yBase - bandWidth, 0, yBase + bandWidth);
+          const alphaBase = 0.25 + 0.2 * Math.sin(time * 0.3 + b);
+          grad.addColorStop(0, `hsla(${hueShift + 20}, 80%, 60%, 0)`);
+          grad.addColorStop(0.3, `hsla(${hueShift}, 90%, 70%, ${alphaBase * 0.9})`);
+          grad.addColorStop(0.5, `hsla(${hueShift - 10}, 100%, 80%, ${alphaBase})`);
+          grad.addColorStop(0.7, `hsla(${hueShift + 30}, 80%, 65%, ${alphaBase * 0.7})`);
+          grad.addColorStop(1, `hsla(${hueShift + 60}, 70%, 50%, 0)`);
+
+          // Draw multiple wavy ribbons
+          for (let wave = 0; wave < 3; wave++) {
+            const waveOffset = wave * 0.3;
+            ctx.beginPath();
+            let firstX = 0;
+            let firstY = yBase + bandWidth * 0.3 * Math.sin(time * 0.8 + b * 1.5 + waveOffset);
+            ctx.moveTo(firstX, firstY);
+            for (let x = 10; x <= W; x += 10) {
+              const y = yBase + bandWidth * 0.4 * Math.sin(x * 0.008 + time * 0.6 + b * 1.2 + waveOffset + offset);
+              ctx.lineTo(x, y);
+            }
+            ctx.lineTo(W, yBase + bandWidth * 0.3 * Math.sin(W * 0.008 + time * 0.6 + b * 1.2 + waveOffset));
+            ctx.strokeStyle = grad;
+            ctx.lineWidth = 12 + 8 * Math.sin(time * 0.2 + b);
+            ctx.stroke();
+          }
+        }
+
+        // ---- MOUNTAIN SILHOUETTE (with glow from aurora) ----
+        // Sample aurora color at mountain top
+        const auroraHue = (120 + 60 * Math.sin(time * 0.3)) % 360;
+        const glowColor = `hsl(${auroraHue + 20}, 70%, 50%)`;
+        const glowAlpha = 0.15 + 0.1 * Math.sin(time * 0.4);
+
+        // Draw mountain fill with subtle glow overlay
+        ctx.beginPath();
+        ctx.moveTo(mountainPoints[0].x, H);
+        for (let i = 0; i < mountainPoints.length; i++) {
+          const p = mountainPoints[i];
+          ctx.lineTo(p.x, p.y);
+        }
+        ctx.lineTo(mountainPoints[mountainPoints.length - 1].x, H);
+        ctx.closePath();
+
+        // Base fill dark
+        ctx.fillStyle = '#0a0a12';
+        ctx.fill();
+
+        // Glow overlay on mountain silhouette
+        ctx.beginPath();
+        ctx.moveTo(mountainPoints[0].x, H);
+        for (let i = 0; i < mountainPoints.length; i++) {
+          const p = mountainPoints[i];
+          ctx.lineTo(p.x, p.y);
+        }
+        ctx.lineTo(mountainPoints[mountainPoints.length - 1].x, H);
+        ctx.closePath();
+        ctx.fillStyle = `hsla(${auroraHue + 30}, 70%, 40%, ${glowAlpha * 0.3})`;
+        ctx.fill();
+
+        // ---- PINE TREES (with glow) ----
+        for (const tree of trees) {
+          const x = tree.x;
+          const y = tree.y;
+          const h = tree.height;
+          const w = tree.width;
+          // tree glow
+          const treeGlow = `hsla(${auroraHue + 20}, 60%, 35%, ${glowAlpha * 0.5})`;
+
+          // Draw tree as triangle(s)
+          ctx.save();
+          ctx.translate(x, y);
+          // trunk
+          ctx.fillStyle = '#1a1a10';
+          ctx.fillRect(-2, 0, 4, h * 0.2);
+
+          // foliage (pointy)
+          ctx.beginPath();
+          ctx.moveTo(0, -h);
+          ctx.lineTo(-w, 0);
+          ctx.lineTo(w, 0);
+          ctx.closePath();
+          ctx.fillStyle = '#0f1a0f';
+          ctx.fill();
+          // glow overlay
+          ctx.beginPath();
+          ctx.moveTo(0, -h);
+          ctx.lineTo(-w, 0);
+          ctx.lineTo(w, 0);
+          ctx.closePath();
+          ctx.fillStyle = treeGlow;
+          ctx.fill();
+
+          // second smaller triangle for some trees
+          if (tree.type === 'pointy' && Math.random() > 0.3) {
+            ctx.beginPath();
+            ctx.moveTo(0, -h * 0.7);
+            ctx.lineTo(-w * 0.7, 0);
+            ctx.lineTo(w * 0.7, 0);
+            ctx.closePath();
+            ctx.fillStyle = '#0f1a0f';
+            ctx.fill();
+            ctx.fillStyle = treeGlow;
+            ctx.fill();
+          }
+          ctx.restore();
+        }
+
+        // ---- extra mountain ridge glow lines ----
+        ctx.beginPath();
+        for (let i = 0; i < mountainPoints.length - 1; i++) {
+          const p1 = mountainPoints[i];
+          const p2 = mountainPoints[i + 1];
+          ctx.moveTo(p1.x, p1.y);
+          ctx.lineTo(p2.x, p2.y);
+        }
+        ctx.strokeStyle = `hsla(${auroraHue + 40}, 60%, 50%, ${glowAlpha * 0.2})`;
+        ctx.lineWidth = 2;
+        ctx.stroke();
+
+        // ---- foreground mist / glow ----
+        const mistGrad = ctx.createRadialGradient(W/2, H*0.85, 10, W/2, H*0.85, H*0.4);
+        mistGrad.addColorStop(0, `hsla(${auroraHue + 20}, 50%, 30%, 0.05)`);
+        mistGrad.addColorStop(1, `hsla(0, 0%, 0%, 0)`);
+        ctx.fillStyle = mistGrad;
+        ctx.fillRect(0, H*0.7, W, H*0.3);
+
+        requestAnimationFrame(draw);
+      }
+
+      // Handle resize: regenerate mountains and trees
+      window.addEventListener('resize', () => {
+        resize();
+        mountainPoints = generateMountainPath();
+        trees = generateTrees();
+      });
+
+      draw();
+    })();
+  </script>
+</body>
+</html>
