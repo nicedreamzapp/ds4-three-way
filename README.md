@@ -15,6 +15,23 @@
   </p>
 </p>
 
+**What it is:** a small shell harness that sends one prompt to two local LLM servers and the Claude CLI, times each run, and saves the HTML each model wrote so you can open them side by side.
+
+**Proof in this repo:** the actual model outputs ([`outputs/ds4.html`](outputs/ds4.html), [`outputs/cloud-claude.html`](outputs/cloud-claude.html), [`outputs/gemma.html`](outputs/gemma.html)), the timing and token files the script wrote next to them ([`outputs/*.meta.txt`](outputs/)), and the video above.
+
+---
+
+## What I built
+
+Built by Matt Macosko:
+
+- [`run_benchmark.sh`](run_benchmark.sh): the harness. Sends the prompt to `ds4` on `:8000` and Gemma on `:4000` (Anthropic-style `/v1/messages`), and to `claude --print`. Records wall-clock seconds and token usage per engine.
+- [`comparison.html`](comparison.html): side-by-side page that loads every output in an iframe, with a stats bar.
+- [`scene-ds4.html`](scene-ds4.html), [`scene-cloud-claude.html`](scene-cloud-claude.html), [`scene-gemma.html`](scene-gemma.html), [`scene-qwen.html`](scene-qwen.html), [`title.html`](title.html), [`outro.html`](outro.html): the video cards.
+- [`narration.txt`](narration.txt): the voiceover script.
+
+Upstream, not mine: [`antirez/ds4`](https://github.com/antirez/ds4) (inference engine), DeepSeek V4 Flash, Gemma 4 31B and Qwen3-Coder (models), MLX (local serving for Gemma and Qwen), and Anthropic's Claude via the `claude` CLI. The HTML in `outputs/` was written by those models, not by me.
+
 ---
 
 ## The benchmark
@@ -31,50 +48,71 @@ One identical prompt sent to three different inference stacks on the same MacBoo
 
 Each one produced a completely different aurora. None of the local outputs left the laptop.
 
+Numbers come straight from [`outputs/*.meta.txt`](outputs/). The Cloud Claude token count is an estimate: the `claude --print` path does not report usage, so its meta file only has the time.
+
+**Bonus fourth engine:** [`comparison.html`](comparison.html) is actually a four-up. It also shows **Qwen3-Coder 30B-A3B** (MLX 8-bit, local): 28 s, 301 lines, per [`outputs/qwen.meta.txt`](outputs/qwen.meta.txt). That run is not in `run_benchmark.sh` or the narration, and it has no token count.
+
 ---
 
 ## What's in this repo
 
 ```
-ds4-comparison-video/
+ds4-three-way/
 ├── README.md                                this file
 ├── run_benchmark.sh                         hits all 3 backends with the same prompt
 ├── narration.txt                            the voiceover script
 ├── outputs/
 │   ├── ds4.html              → DeepSeek's interpretation
 │   ├── cloud-claude.html     → Cloud Claude's interpretation
-│   └── gemma.html            → Gemma's interpretation
-├── comparison.html                          three-up iframe page used in the video
-├── scene-{ds4,cloud-claude,gemma}.html      single-engine showcase pages
+│   ├── gemma.html            → Gemma's interpretation
+│   ├── qwen.html             → Qwen's interpretation (bonus, run separately)
+│   └── *.meta.txt            → time + token usage for each run
+├── comparison.html                          four-up iframe page (three engines + Qwen)
+├── scene-{ds4,cloud-claude,gemma,qwen}.html single-engine showcase pages
 ├── title.html / outro.html                  title and outro cards
-├── recordings/                              captured PNGs + MP4 segments
-└── ds4-comparison-final.mp4                 the finished 52-second video
+├── recordings/                              captured PNGs + MP4 segments (gitignored)
+└── ds4-comparison-final.mp4                 the finished 52-second video (gitignored)
 ```
+
+`recordings/` and the final MP4 are listed in `.gitignore`, so they are not in this repo. Watch the video on YouTube instead.
 
 ---
 
 ## Reproduce it
+
+You need: `bash`, `curl`, `jq`, the `claude` CLI logged in, and two local servers that speak Anthropic-style `POST /v1/messages`.
 
 ```sh
 # 1. Boot the local servers (each idempotent)
 ~/.local/bin/ds4-server-up        # DeepSeek V4 Flash on :8000
 ~/.local/bin/mlx-server-up        # Gemma 4 31B on :4000
 
-# 2. Run the benchmark — saves outputs/{ds4,gemma,cloud-claude}.html
-bash run_benchmark.sh
+# 2. Run the benchmark with the aurora prompt (paste the full prompt from above)
+#    Saves outputs/{ds4,gemma,cloud-claude}.html plus .meta.txt files
+bash run_benchmark.sh "Build a complete single-file HTML page with an animated northern lights scene ..."
 
-# 3. Open the live three-up comparison in your browser
+# Optional: run one engine only
+MODE=ds4 bash run_benchmark.sh "..."     # or MODE=gemma / MODE=cloud
+
+# 3. Open the live comparison in your browser (macOS `open`)
 open comparison.html
 ```
 
 For Cloud Claude, the script shells out to `claude --print` so it uses your Max-plan subscription instead of API credits.
+
+**What does not work out of the box:**
+
+- The two `*-server-up` scripts are **not in this repo**. You have to set up `ds4` and an MLX server yourself so they answer on `:8000` (model `deepseek-v4-flash`) and `:4000` (model `gemma-4-31b`).
+- If you run `bash run_benchmark.sh` with **no argument**, it uses a built-in *Snake game* prompt, not the aurora prompt. Pass the aurora prompt as the first argument to reproduce the table.
+- Running it overwrites the committed files in `outputs/`.
+- There is no Qwen step in the script. `outputs/qwen.html` was produced separately.
 
 ---
 
 ## Why each engine produced what it produced
 
 - **`ds4` / DeepSeek V4 Flash** went pine-forest with a flowing teal/lavender ribbon aurora. Most cohesive of the three. The mountains read as a dense tree silhouette, not a peak-line — coherent interpretation of "mountain ridges with pine trees along them."
-- **Cloud Claude / Sonnet** went the most cinematic — vivid magenta + teal aurora bands draped across jagged mountain silhouettes, with subtle luminescent dusting along the peaks.
+- **Cloud Claude** went the most cinematic — vivid magenta + teal aurora bands draped across jagged mountain silhouettes, with subtle luminescent dusting along the peaks.
 - **Gemma 4 31B** went minimalist — a clean line-drawing mountain silhouette under a single sweeping streak of green and violet. Stylized, almost graphic.
 
 Three completely different aesthetic interpretations of one prompt, on the same hardware. The model is the lens.
